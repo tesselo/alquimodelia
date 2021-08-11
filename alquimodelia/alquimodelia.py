@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tesselo_modeling import unet_arch, unet_arch_2D, resnet_arch
+from alquimodelia import unet_arch, unet_arch_2D, resnet_arch
 from tensorflow.keras.layers import Input, Dense, Cropping2D
 from tensorflow.keras.models import Model, Sequential, load_model
 
