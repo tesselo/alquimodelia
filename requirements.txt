@@ -1,0 +1,3 @@
+tensorflow
+numpy
+d2l
