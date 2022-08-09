@@ -47,7 +47,6 @@ def count_number_divisions(size, count, by=2, limit=8):
         count : int
             Input must be 0.
         by : int
-            Path to the dictonary containing the training set.
         limit : int
             Size of last filter (smaller).
     """
@@ -68,7 +67,15 @@ Conv_args = {}
 
 class UNET(tf.keras.Model):
     def __init__(
-        self, timesteps, width, height, padding, num_bands, num_classes, dimension="3D"
+        self,
+        timesteps,
+        width,
+        height,
+        padding,
+        num_bands,
+        num_classes,
+        dimension="3D",
+        number_of_conv_layers=None,
     ):
         self.num_classes = num_classes
         self.dimension = dimension
@@ -77,6 +84,7 @@ class UNET(tf.keras.Model):
         self.height = height
         self.padding = padding
         self.num_bands = num_bands
+        self.number_of_conv_layers = number_of_conv_layers
 
         # Set the dimensinal operations.
         if dimension == "3D":
@@ -268,24 +276,27 @@ class UNET(tf.keras.Model):
             activation=activation_middle,
             kernel_size=kernel_size,
         )
-        print(f"c : {c5.shape}")
-        outputs = Conv3D(
-            1,
-            3,
-            activation=activation_middle,
-            data_format="channels_first",
-            padding=padding,
-        )(c5)
+        print(f"c455555555 : {c5.shape}")
+        if self.dimension == "3D":
+            outputs = Conv3D(
+                1,
+                3,
+                activation=activation_middle,
+                data_format="channels_first",
+                padding=padding,
+            )(c5)
+        else:
+            outputs = c5
 
-        outputs2 = Conv3D(
+        outputs2 = self.Conv(
             num_classes,
             3,
             activation=activation_end,
             data_format="channels_last",
             padding=padding,
         )(outputs)
-
-        outputs2 = tf.keras.backend.squeeze(outputs2, 1)
+        if self.dimension == "3D":
+            outputs2 = tf.keras.backend.squeeze(outputs2, 1)
 
         return outputs2
 
@@ -296,7 +307,9 @@ class UNET(tf.keras.Model):
         number_of_layers = []
         for size in self.model_input_shape:
             number_of_layers.append(count_number_divisions(size, 0))
-        number_of_layers = max(number_of_layers)
+        print(number_of_layers)
+        if self.number_of_conv_layers is None:
+            self.number_of_conv_layers = max(number_of_layers)
 
         # Create the input layer.
         inputs = Input(self.model_input_shape)
