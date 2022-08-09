@@ -1,6 +1,7 @@
 import keras_unet
 
 from alquimodelia.pixel import Pixel_model
+from alquimodelia.unet_arch import UNET
 
 # for classes sigmoid sofmax stupid
 
@@ -30,10 +31,17 @@ def ModelMagia(
             return_last_layer=False,
             classifyer=True,
         )
-    elif model_type == "3D_UNET":
-        model = "ss"
-    elif model_type == "2D_UNET":
-        model = "ss"
+    elif "UNET" in model_type:
+        dimension = model_type.split("_")[0]
+        model = UNET(
+            timesteps,
+            width,
+            height,
+            padding,
+            num_bands,
+            num_classes,
+            dimension=dimension,
+        )
     elif "keras_unet" in model_type:
         # Use keras_unet.name_of_model
         model_name = model_type.replace("keras_unet.", "")
