@@ -6,14 +6,14 @@ from tensorflow.keras.layers import (
     Conv3D,
     Conv3DTranspose,
     Cropping2D,
-    Input,
     MaxPooling2D,
     MaxPooling3D,
     SpatialDropout2D,
     SpatialDropout3D,
     concatenate,
 )
-from tensorflow.keras.models import Model
+
+from alquimodelia.alquimodelia import ModelMagia
 
 # momentum must be big so the different batches dont do much damage
 # last conv must have a stride and kernel of 1, with a density of num classes
@@ -36,7 +36,10 @@ from tensorflow.keras.models import Model
 # dafuq is this UpSampling2D?
 
 
-def count_number_divisions(size, count, by=2, limit=8):
+# based on https://towardsdatascience.com/understanding-semantic-segmentation-with-unet-6be4f42d4b47
+
+
+def count_number_divisions(size, count, by=2, limit=2):
     """
     Count the number of possible steps.
 
@@ -65,46 +68,45 @@ Dropout_args = {}
 Conv_args = {}
 
 
-class UNET(tf.keras.Model):
+class UNet(ModelMagia):
+    """Base classe for Unet models"""
+
     def __init__(
         self,
-        timesteps,
-        width,
-        height,
-        padding,
-        num_bands,
-        num_classes,
-        dimension="3D",
+        n_filters=16,
         number_of_conv_layers=None,
+        kernel_size=3,
+        batchnorm=True,
+        data_format="channels_last",
+        padding="same",
+        activation="relu",
+        kernel_initializer="he_normal",
+        **kwargs,
     ):
-        self.num_classes = num_classes
-        self.dimension = dimension
-        self.timesteps = timesteps
-        self.width = width
-        self.height = height
-        self.padding = padding
-        self.num_bands = num_bands
         self.number_of_conv_layers = number_of_conv_layers
+        self.n_filters = n_filters
+        self.kernel_size = kernel_size
+        self.batchnorm = batchnorm
+        self.data_format = data_format
+        self.padding = padding
+        self.activation = activation
+        self.kernel_initializer = kernel_initializer
+        super().__init__(**kwargs)
 
-        # Set the dimensinal operations.
-        if dimension == "3D":
-            self.Conv = Conv3D
-            self.ConvTranspose = Conv3DTranspose
-            self.SpatialDropout = SpatialDropout3D
-            self.MaxPooling = MaxPooling3D
-            self.model_input_shape = (timesteps, height, width, num_bands)
-        elif dimension == "2D":
-            self.Conv = Conv2D
-            self.ConvTranspose = Conv2DTranspose
-            self.SpatialDropout = SpatialDropout2D
-            self.MaxPooling = MaxPooling2D
-            self.model_input_shape = (height, width, num_bands)
-            self.timesteps = 1
-        else:
-            print("Dimension not available")
+    def get_number_convolution_layers(self):
+        # Set the number of steps.
+        # This will build the max number of steps but sometimes the max is not the best.
+        number_of_layers = []
+        if self.data_format == "channels_first":
+            study_shape = self.model_input_shape[1:]
+        elif self.data_format == "channels_last":
+            study_shape = self.model_input_shape[:-1]
+        for size in study_shape:
+            number_of_layers.append(count_number_divisions(size, 0))
+        if self.number_of_conv_layers is None:
+            self.number_of_conv_layers = min(number_of_layers)
 
-    def convblock(self, x):
-        return self.Conv(x)
+        return
 
     def convolution_block(
         self,
@@ -134,8 +136,8 @@ class UNET(tf.keras.Model):
             kernel_size=kernel_size,
             kernel_initializer=kernel_initializer,
             padding=padding,
-            activation=activation,
             data_format=data_format,
+            activation=activation,
         )(x)
         if batchnorm:
             x = BatchNormalization()(x)
@@ -144,8 +146,8 @@ class UNET(tf.keras.Model):
     def contracting_block(
         self,
         input_img,
-        n_filters,
-        batchnorm,
+        n_filters=16,
+        batchnorm=True,
         dropout=0.5,
         kernel_size=3,
         strides=2,
@@ -155,7 +157,7 @@ class UNET(tf.keras.Model):
     ):
         c1 = self.convolution_block(
             input_img,
-            n_filters=n_filters * 1,
+            n_filters=n_filters,
             kernel_size=kernel_size,
             batchnorm=batchnorm,
             data_format=data_format,
@@ -170,8 +172,8 @@ class UNET(tf.keras.Model):
         self,
         ci,
         cii,
-        n_filters,
-        batchnorm,
+        n_filters=16,
+        batchnorm=True,
         dropout=0.5,
         kernel_size=3,
         strides=2,
@@ -199,9 +201,35 @@ class UNET(tf.keras.Model):
         )
         return c
 
+    def contracting_loop(self, input_img, contracting_arguments):
+        list_p = [input_img]
+        list_c = []
+        n_filters = contracting_arguments["n_filters"]
+        for i in range(self.number_of_conv_layers + 1):
+            old_p = list_p[i]
+            filter_expansion = 2**i
+            contracting_arguments["n_filters"] = n_filters * filter_expansion
+            p, c = self.contracting_block(old_p, **contracting_arguments)
+            list_p.append(p)
+            list_c.append(c)
+        return list_c
+
+    def expanding_loop(self, list_contracted_layers, expansion_arguments):
+        list_c = [list_contracted_layers[-1]]
+        iterator_expanded_blocks = range(self.number_of_conv_layers)
+        iterator_contracted_blocks = reversed(iterator_expanded_blocks)
+        n_filters = expansion_arguments["n_filters"]
+        for i, c in zip(iterator_expanded_blocks, iterator_contracted_blocks):
+            filter_expansion = 2 ** (c)
+            expansion_arguments["n_filters"] = n_filters * filter_expansion
+            c4 = self.expansive_block(
+                list_c[i], list_contracted_layers[c], **expansion_arguments
+            )
+            list_c.append(c4)
+        return c4
+
     def get_unet_12t(
         self,
-        input_img,
         n_filters=16,
         dropout=0.2,
         batchnorm=True,
@@ -212,110 +240,54 @@ class UNET(tf.keras.Model):
         padding="same",
         num_classes=1,
     ):
-        # contracting path
-        p1, c1 = self.contracting_block(
-            input_img,
-            n_filters,
-            batchnorm,
-            dropout=dropout,
-            kernel_size=kernel_size,
-            data_format=data_format,
-            activation=activation_middle,
-            padding=padding,
-        )
-        print(f"p : {p1.shape}")
-        print(f"c : {c1.shape}")
 
-        p2, c2 = self.contracting_block(
-            p1,
-            n_filters * 2,
-            batchnorm,
-            dropout=dropout,
-            kernel_size=kernel_size,
-            data_format=data_format,
-            activation=activation_middle,
-            padding=padding,
-        )
-        print(f"p : {p2.shape}")
-        print(f"c : {c2.shape}")
+        input_img = self.input_layer
+        self.get_number_convolution_layers()
 
-        # middle
-        p3, c3 = self.contracting_block(
-            p2,
-            n_filters * 4,
-            batchnorm,
-            dropout=dropout,
-            kernel_size=kernel_size,
-            data_format=data_format,
-            activation=activation_middle,
-            padding=padding,
-        )
-        print(f"p : {p3.shape}")
-        print(f"c : {c3.shape}")
+        contracting_arguments = {
+            "n_filters": n_filters,
+            "batchnorm": batchnorm,
+            "dropout": dropout,
+            "kernel_size": kernel_size,
+            "padding": padding,
+            "data_format": data_format,
+            "activation": activation_middle,
+        }
+        expansion_arguments = {
+            "n_filters": n_filters,
+            "batchnorm": batchnorm,
+            "dropout": dropout,
+            "data_format": data_format,
+            "activation": activation_middle,
+            "kernel_size": kernel_size,
+        }
 
-        # expansive path
-        c4 = self.expansive_block(
-            c3,
-            c2,
-            n_filters * 2,
-            batchnorm,
-            dropout=dropout,
-            data_format=data_format,
-            activation=activation_middle,
-            kernel_size=kernel_size,
-        )
-        print(f"c : {c4.shape}")
+        list_contracted_layers = self.contracting_loop(input_img, contracting_arguments)
+        unet_output = self.expanding_loop(list_contracted_layers, expansion_arguments)
+        return unet_output
 
-        c5 = self.expansive_block(
-            c4,
-            c1,
-            n_filters * 1,
-            batchnorm,
-            dropout=dropout,
-            data_format=data_format,
-            activation=activation_middle,
-            kernel_size=kernel_size,
-        )
-        print(f"c455555555 : {c5.shape}")
-        if self.dimension == "3D":
-            outputs = Conv3D(
-                1,
-                3,
-                activation=activation_middle,
-                data_format="channels_first",
-                padding=padding,
-            )(c5)
-        else:
-            outputs = c5
 
-        outputs2 = self.Conv(
-            num_classes,
-            3,
-            activation=activation_end,
-            data_format="channels_last",
-            padding=padding,
-        )(outputs)
-        if self.dimension == "3D":
-            outputs2 = tf.keras.backend.squeeze(outputs2, 1)
+class UNet2D(UNet):
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        self.Conv = Conv2D
+        self.ConvTranspose = Conv2DTranspose
+        self.SpatialDropout = SpatialDropout2D
+        self.MaxPooling = MaxPooling2D
+        kwargs["timesteps"] = 1
 
-        return outputs2
+        super().__init__(**kwargs)
 
-    def unet(self):
+    def define_input_shape(self):
+        if self.data_format == "channels_first":
+            self.model_input_shape = (self.num_bands, self.height, self.width)
+        elif self.data_format == "channels_last":
+            self.model_input_shape = (self.height, self.width, self.num_bands)
 
-        # Set the number of steps.
-        # This will build the max number of steps but sometimes the max is not the best.
-        number_of_layers = []
-        for size in self.model_input_shape:
-            number_of_layers.append(count_number_divisions(size, 0))
-        print(number_of_layers)
-        if self.number_of_conv_layers is None:
-            self.number_of_conv_layers = max(number_of_layers)
-
-        # Create the input layer.
-        inputs = Input(self.model_input_shape)
-
+    def get_output_layer(self):
         outputDeep = self.get_unet_12t(
-            inputs,
             n_filters=16,
             dropout=0.2,
             batchnorm=True,
@@ -326,9 +298,80 @@ class UNET(tf.keras.Model):
             padding="same",
             num_classes=self.num_classes,
         )
-        if self.padding > 0:
+        outputDeep = self.Conv(
+            self.num_classes,
+            3,
+            activation="softmax",
+            data_format="channels_last",
+            padding="same",
+        )(outputDeep)
+        if self.padding is not None:
             outputDeep = Cropping2D(
                 cropping=((self.padding, self.padding), (self.padding, self.padding))
             )(outputDeep)
+        return outputDeep
 
-        return Model(inputs=inputs, outputs=outputDeep)
+
+class UNet3D(UNet):
+    def __init__(
+        self,
+        **kwargs,
+    ):
+        self.Conv = Conv3D
+        self.ConvTranspose = Conv3DTranspose
+        self.SpatialDropout = SpatialDropout3D
+        self.MaxPooling = MaxPooling3D
+        super().__init__(**kwargs)
+
+    def define_input_shape(self):
+        if self.data_format == "channels_first":
+            self.model_input_shape = (
+                self.num_bands,
+                self.height,
+                self.width,
+                self.timesteps,
+            )
+        elif self.data_format == "channels_last":
+            self.model_input_shape = (
+                self.timesteps,
+                self.height,
+                self.width,
+                self.num_bands,
+            )
+
+    def get_output_layer(self):
+
+        outputDeep = self.get_unet_12t(
+            n_filters=16,
+            dropout=0.2,
+            batchnorm=True,
+            data_format="channels_last",
+            activation_middle="relu",
+            activation_end="softmax",
+            kernel_size=3,
+            padding="same",
+            num_classes=self.num_classes,
+        )
+
+        outputs = Conv3D(
+            1,
+            3,
+            activation="relu",
+            data_format="channels_first",
+            padding="same",
+        )(outputDeep)
+
+        outputs2 = self.Conv(
+            self.num_classes,
+            3,
+            activation="softmax",
+            data_format="channels_last",
+            padding="same",
+        )(outputs)
+
+        outputDeep = tf.keras.backend.squeeze(outputs2, 1)
+        if self.padding is not None:
+            outputDeep = Cropping2D(
+                cropping=((self.padding, self.padding), (self.padding, self.padding))
+            )(outputDeep)
+        return outputDeep
