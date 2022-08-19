@@ -108,6 +108,35 @@ class UNet(ModelMagia):
 
         return
 
+    def inside_upsampling(self, inputs, channels, upscale_factor):
+
+        conv_args = {
+            "activation": "relu",
+            "kernel_initializer": "Orthogonal",
+            "padding": "same",
+        }
+        x = self.Conv(64, 5, **conv_args)(inputs)
+        x = self.Conv(64, 3, **conv_args)(x)
+        x = self.Conv(32, 3, **conv_args)(x)
+        x = self.Conv(channels * (upscale_factor**2), 3, **conv_args)(x)
+        if len(x.shape) > 4:
+            t = [f for f in tf.split(x, x.shape[1], axis=1)]
+            outputs = []
+            for r in t:
+                print(r.shape)
+                outputs.append(
+                    tf.nn.depth_to_space(
+                        tf.keras.backend.squeeze(r, 1),
+                        upscale_factor,
+                        data_format="NHWC",
+                    )
+                )
+            outputs = tf.stack(outputs, axis=1, name="stack")
+        else:
+            outputs = tf.nn.depth_to_space(x, upscale_factor)
+
+        return outputs
+
     def convolution_block(
         self,
         input_tensor,
