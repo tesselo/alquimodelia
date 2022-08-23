@@ -360,10 +360,10 @@ class UNet3D(UNet):
     def define_input_shape(self):
         if self.data_format == "channels_first":
             self.model_input_shape = (
+                self.timesteps,
                 self.num_bands,
                 self.height,
                 self.width,
-                self.timesteps,
             )
         elif self.data_format == "channels_last":
             self.model_input_shape = (
