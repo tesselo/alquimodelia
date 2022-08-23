@@ -29,19 +29,19 @@ class ModelMagia(tf.keras.Model):
         timesteps=None,
         width=None,
         height=None,
-        padding=None,
         num_bands=None,
         num_classes=None,
         activation_final=None,
+        data_format="channels_last",
     ):
 
         self.num_classes = num_classes
         self.timesteps = timesteps
         self.width = width
         self.height = height
-        self.padding = padding
         self.num_bands = num_bands
         self.activation_final = activation_final
+        self.data_format = data_format
         self.get_input_layer()
 
         super().__init__(
