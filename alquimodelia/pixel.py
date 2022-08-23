@@ -16,10 +16,10 @@ class Pixel(ModelMagia):
 
     def __init__(
         self,
-        classifyer=True,
+        classifier=True,
         **kwargs,
     ):
-        self.classifyer = classifyer
+        self.classifier = classifier
         super().__init__(**kwargs)
 
     def define_input_shape(self):
@@ -79,7 +79,7 @@ class Pixel(ModelMagia):
         normed3 = BatchNormalization()(hidden1)
         if self.activation_final is None:
             self.activation_final = "linear"
-            if self.classifyer is True:
+            if self.classifier is True:
                 self.activation_final = "softmax"
         # prediction output
         output = Dense(self.num_classes, activation=self.activation_final)(normed3)
