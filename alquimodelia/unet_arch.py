@@ -77,8 +77,8 @@ class UNet(ModelMagia):
         number_of_conv_layers=None,
         kernel_size=3,
         batchnorm=True,
-        data_format="channels_last",
-        padding="same",
+        padding_style="same",
+        padding=None,
         activation="relu",
         kernel_initializer="he_normal",
         **kwargs,
@@ -87,8 +87,9 @@ class UNet(ModelMagia):
         self.n_filters = n_filters
         self.kernel_size = kernel_size
         self.batchnorm = batchnorm
-        self.data_format = data_format
         self.padding = padding
+        self.padding_style = padding_style
+
         self.activation = activation
         self.kernel_initializer = kernel_initializer
         super().__init__(**kwargs)
@@ -335,9 +336,13 @@ class UNet2D(UNet):
             padding="same",
         )(outputDeep)
         if self.padding is not None:
-            outputDeep = Cropping2D(
-                cropping=((self.padding, self.padding), (self.padding, self.padding))
-            )(outputDeep)
+            if self.padding > 0:
+                outputDeep = Cropping2D(
+                    cropping=(
+                        (self.padding, self.padding),
+                        (self.padding, self.padding),
+                    )
+                )(outputDeep)
         return outputDeep
 
 
@@ -400,7 +405,11 @@ class UNet3D(UNet):
 
         outputDeep = tf.keras.backend.squeeze(outputs2, 1)
         if self.padding is not None:
-            outputDeep = Cropping2D(
-                cropping=((self.padding, self.padding), (self.padding, self.padding))
-            )(outputDeep)
+            if self.padding > 0:
+                outputDeep = Cropping2D(
+                    cropping=(
+                        (self.padding, self.padding),
+                        (self.padding, self.padding),
+                    )
+                )(outputDeep)
         return outputDeep
