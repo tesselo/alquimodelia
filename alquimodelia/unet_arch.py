@@ -73,14 +73,14 @@ class UNet(ModelMagia):
 
     def __init__(
         self,
-        n_filters=16,
-        number_of_conv_layers=None,
-        kernel_size=3,
-        batchnorm=True,
-        padding_style="same",
-        padding=None,
-        activation="relu",
-        kernel_initializer="he_normal",
+        n_filters: int = 16,
+        number_of_conv_layers: int = 0,
+        kernel_size: int = 3,
+        batchnorm: bool = True,
+        padding_style: str = "same",
+        padding: int = 0,
+        activation: str = "relu",
+        kernel_initializer: str = "he_normal",
         **kwargs,
     ):
         self.number_of_conv_layers = number_of_conv_layers
@@ -104,7 +104,7 @@ class UNet(ModelMagia):
             study_shape = self.model_input_shape[:-1]
         for size in study_shape:
             number_of_layers.append(count_number_divisions(size, 0))
-        if self.number_of_conv_layers is None:
+        if self.number_of_conv_layers == 0:
             self.number_of_conv_layers = min(number_of_layers)
 
         return
@@ -335,14 +335,13 @@ class UNet2D(UNet):
             data_format="channels_last",
             padding="same",
         )(outputDeep)
-        if self.padding is not None:
-            if self.padding > 0:
-                outputDeep = Cropping2D(
-                    cropping=(
-                        (self.padding, self.padding),
-                        (self.padding, self.padding),
-                    )
-                )(outputDeep)
+        if self.padding > 0:
+            outputDeep = Cropping2D(
+                cropping=(
+                    (self.padding, self.padding),
+                    (self.padding, self.padding),
+                )
+            )(outputDeep)
         return outputDeep
 
 
@@ -404,12 +403,11 @@ class UNet3D(UNet):
         )(outputs)
 
         outputDeep = tf.keras.backend.squeeze(outputs2, 1)
-        if self.padding is not None:
-            if self.padding > 0:
-                outputDeep = Cropping2D(
-                    cropping=(
-                        (self.padding, self.padding),
-                        (self.padding, self.padding),
-                    )
-                )(outputDeep)
+        if self.padding > 0:
+            outputDeep = Cropping2D(
+                cropping=(
+                    (self.padding, self.padding),
+                    (self.padding, self.padding),
+                )
+            )(outputDeep)
         return outputDeep

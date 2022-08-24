@@ -11,12 +11,13 @@ from tensorflow.keras.layers import (
 from alquimodelia.alquimodelia import ModelMagia
 
 
+
 class Pixel(ModelMagia):
     """Base classe for Pixel models"""
 
     def __init__(
         self,
-        classifier=True,
+        classifier: bool = True,
         **kwargs,
     ):
         self.classifier = classifier
