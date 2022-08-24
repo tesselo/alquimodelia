@@ -71,7 +71,7 @@ UNet3D_model = UNet3D(
 
 
 ```python
-from alquimodelia.unet_arch import ResNet2D, ResNet3D
+from alquimodelia.resnet_arch import ResNet2D, ResNet3D
 
 ResNet3D_model = ResNet3D(
         n_filters=16,
@@ -90,7 +90,7 @@ ResNet3D_model = ResNet3D(
 ### LSTM
 
 ```python
-from alquimodelia.unet_arch import RnnLSTM
+from alquimodelia.rnn_lstm_arch import RnnLSTM
 
 RnnLSTM_model = RnnLSTM(
         timesteps=48,
