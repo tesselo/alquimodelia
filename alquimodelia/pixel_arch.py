@@ -10,6 +10,7 @@ from tensorflow.keras.layers import (
 
 from alquimodelia.alquimodelia import ModelMagia
 
+# https://machinelearningmastery.com/keras-functional-api-deep-learning/
 
 
 class Pixel(ModelMagia):
