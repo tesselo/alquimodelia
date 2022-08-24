@@ -12,7 +12,8 @@ Package to enable easy usage of Tesselo's common model
     - [x] Make as a class
 - [ ] Models:
     - [x] ResNet
-    - [ ] LSTM
+    - [x] LSTM
+    - [ ] Outside packages
 - [ ] Test Models:
     - [ ] Working samples to test models
     - [ ] Visualize results
@@ -30,8 +31,11 @@ pip install .
 
 ## Usage examples:
 
-- UNet implementations:  
-    - [3D_UNET](#3D_UNET)  
+- UNet implementations:
+    - [3D_UNET](#3D_UNET) 
+    - [3D_RESNET](#3D_RESNET)  
+    - [1D_LSTM](#LSTM)
+
 
 <br>
 
@@ -59,6 +63,45 @@ UNet3D_model = UNet3D(
         data_format="channels_last",
 )
 ```
+
+
+<br>
+
+### 3D_RESNET
+
+
+```python
+from alquimodelia.unet_arch import ResNet2D, ResNet3D
+
+ResNet3D_model = ResNet3D(
+        n_filters=16,
+        timesteps=12,
+        width=600,
+        height=600,
+        num_bands=10,
+        num_classes=4,
+        activation_final=None,
+        data_format="channels_last",
+)
+```
+
+<br>
+
+### LSTM
+
+```python
+from alquimodelia.unet_arch import RnnLSTM
+
+RnnLSTM_model = RnnLSTM(
+        timesteps=48,
+        num_bands=10,
+        num_classes=12,
+        activation_final="softmax",
+        data_format="channels_last",
+        lstm_units=(120, 80),
+)
+```
+
 
 [[back to usage examples]](#usage-examples)
 
