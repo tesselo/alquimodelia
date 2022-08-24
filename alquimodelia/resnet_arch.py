@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from tensorflow.keras.layers import (
     Activation,
     AveragePooling2D,
@@ -25,12 +27,12 @@ class ResNet(ModelMagia):
 
     def __init__(
         self,
-        stages=(1, 2, 3, 4),
-        n_filters=None,
-        reg=0.0001,
-        bnEps=2e-5,
-        bnMom=0.9,
-        upsample=None,
+        stages: Tuple[int, int, int, int] = (1, 2, 3, 4),
+        n_filters: int = 16,
+        reg: float = 0.0001,
+        bnEps: float = 2e-5,
+        bnMom: float = 0.9,
+        upsample: int = 0,
         **kwargs,
     ):
         self.stages = stages
@@ -130,7 +132,7 @@ class ResNet(ModelMagia):
             chanDim = 2
         # set the input and apply BN
         inputs = self.input_layer
-        if self.upsample is not None:
+        if self.upsample != 0:
             x = self.UpSampling(size=(1, self.upsample, self.upsample))(inputs)
         else:
             x = inputs

@@ -26,13 +26,13 @@ class ModelMagia(tf.keras.Model):
 
     def __init__(
         self,
-        timesteps=None,
-        width=None,
-        height=None,
-        num_bands=None,
-        num_classes=None,
-        activation_final=None,
-        data_format="channels_last",
+        timesteps: int = 0,
+        width: int = 0,
+        height: int = 0,
+        num_bands: int = 0,
+        num_classes: int = 0,
+        activation_final: str = "sigmoid",
+        data_format: str = "channels_last",
     ):
 
         self.num_classes = num_classes
