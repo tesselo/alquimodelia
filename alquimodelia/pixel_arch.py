@@ -1,3 +1,6 @@
+from functools import cached_property
+
+import tensorflow as tf
 from tensorflow.keras.layers import (
     BatchNormalization,
     Conv1D,
@@ -24,16 +27,17 @@ class Pixel(ModelMagia):
         self.classifier = classifier
         super().__init__(**kwargs)
 
-    def define_input_shape(self):
+    @cached_property
+    def model_input_shape(self):
         if self.data_format == "channels_first":
-            self.model_input_shape = (
+            return (
                 self.num_bands,
                 self.timesteps,
             )
         elif self.data_format == "channels_last":
-            self.model_input_shape = (self.timesteps, self.num_bands)
+            return (self.timesteps, self.num_bands)
 
-    def get_output_layer(self):
+    def output_layer(self) -> tf.Layer:
         normed = BatchNormalization()(self.input_layer)
 
         # first feature extractor

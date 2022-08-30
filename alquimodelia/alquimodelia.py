@@ -11,14 +11,13 @@ from tensorflow.keras.layers import Input
 
 
 class ModelMagia(tf.keras.Model):
-    def define_input_shape(self):
+    def model_input_shape(self):
         raise NotImplementedError
 
-    def get_input_layer(self):
-        self.define_input_shape()
+    def define_input_layer(self):
         self.input_layer = Input(self.model_input_shape)
 
-    def get_output_layer(self):
+    def output_layer(self):
         raise NotImplementedError
 
     def get_last_layer_activation(self):
@@ -42,9 +41,8 @@ class ModelMagia(tf.keras.Model):
         self.num_bands = num_bands
         self.activation_final = activation_final
         self.data_format = data_format
-        self.get_input_layer()
 
         super().__init__(
             inputs=self.input_layer,
-            outputs=self.get_output_layer(),
+            outputs=self.output_layer(),
         )

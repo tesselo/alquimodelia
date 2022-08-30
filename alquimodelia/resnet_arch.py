@@ -1,5 +1,7 @@
+from functools import cached_property
 from typing import Tuple
 
+import tensorflow as tf
 from tensorflow.keras.layers import (
     Activation,
     AveragePooling2D,
@@ -117,7 +119,7 @@ class ResNet(ModelMagia):
         x = add([conv3, shortcut])
         return x
 
-    def get_output_layer(self):
+    def output_layer(self) -> tf.Layer:
         """
         Build the Model architeture and return last layer.
 
@@ -202,12 +204,13 @@ class ResNet2D(ResNet):
 
         super().__init__(**kwargs)
 
-    def define_input_shape(self):
+    @cached_property
+    def model_input_shape(self):
         """Defines input shape based on channel dimension"""
         if self.data_format == "channels_first":
-            self.model_input_shape = (self.num_bands, self.height, self.width)
+            return (self.num_bands, self.height, self.width)
         elif self.data_format == "channels_last":
-            self.model_input_shape = (self.height, self.width, self.num_bands)
+            return (self.height, self.width, self.num_bands)
 
 
 class ResNet3D(ResNet):
@@ -223,17 +226,18 @@ class ResNet3D(ResNet):
 
         super().__init__(**kwargs)
 
-    def define_input_shape(self):
+    @cached_property
+    def model_input_shape(self):
         """Defines input shape based on channel dimension"""
         if self.data_format == "channels_first":
-            self.model_input_shape = (
+            return (
                 self.timesteps,
                 self.num_bands,
                 self.height,
                 self.width,
             )
         elif self.data_format == "channels_last":
-            self.model_input_shape = (
+            return (
                 self.timesteps,
                 self.height,
                 self.width,
