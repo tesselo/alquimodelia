@@ -23,6 +23,8 @@ from tensorflow.keras.regularizers import l2
 
 from alquimodelia.alquimodelia import ModelMagia
 
+# based on https://towardsdatascience.com/implementing-a-resnet-model-from-scratch-971be7193718
+
 
 class ResNet(ModelMagia):
     """Base classe for ResNet models"""

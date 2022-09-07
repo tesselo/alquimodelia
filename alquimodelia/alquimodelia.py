@@ -1,14 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Input
 
-# for classes sigmoid sofmax stupid
-
-
-# Start easy with imports from open source code
-# https://github.com/karolzak/keras-unet/tree/master/keras_unet
-# https://github.com/qubvel/segmentation_models.pytorch
-# https://github.com/maxvfischer/keras-image-segmentation-loss-functions
-
 
 class ModelMagia(tf.keras.Model):
     def model_input_shape(self):
