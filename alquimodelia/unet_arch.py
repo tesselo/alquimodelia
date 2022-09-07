@@ -43,13 +43,6 @@ def count_number_divisions(size: int, count: int, by: int = 2, limit: int = 2):
     return count
 
 
-BatchNormalization_args = {}
-Activation_args = {}
-MaxPooling_args = {}
-Dropout_args = {}
-Conv_args = {}
-
-
 class UNet(ModelMagia):
     """Base classe for Unet models"""
 
@@ -61,8 +54,10 @@ class UNet(ModelMagia):
         batchnorm: bool = True,
         padding_style: str = "same",
         padding: int = 0,
-        activation: str = "relu",
+        activation_middle: str = "relu",
+        activation_end: str = "softmax",
         kernel_initializer: str = "he_normal",
+        dropout: float = 0.5,
         **kwargs,
     ):
         self._number_of_conv_layers = number_of_conv_layers
@@ -71,8 +66,11 @@ class UNet(ModelMagia):
         self.batchnorm = batchnorm
         self.padding = padding
         self.padding_style = padding_style
+        self.dropout = dropout
 
-        self.activation = activation
+        self.activation_middle = activation_middle
+        self.activation_end = activation_end
+
         self.kernel_initializer = kernel_initializer
         super().__init__(**kwargs)
 
@@ -106,7 +104,6 @@ class UNet(ModelMagia):
             t = [f for f in tf.split(x, x.shape[1], axis=1)]
             outputs = []
             for r in t:
-                print(r.shape)
                 outputs.append(
                     tf.nn.depth_to_space(
                         tf.keras.backend.squeeze(r, 1),
@@ -119,6 +116,12 @@ class UNet(ModelMagia):
             outputs = tf.nn.depth_to_space(x, upscale_factor)
 
         return outputs
+
+    def opposite_data_format(self):
+        if self.data_format == "channels_first":
+            return "channels_last"
+        elif self.data_format == "channels_last":
+            return "channels_first"
 
     def convolution_block(
         self,
@@ -305,22 +308,21 @@ class UNet2D(UNet):
 
     def output_layer(self) -> tf.Laye:
         outputDeep = self.deep_neural_network(
-            n_filters=16,
-            dropout=0.2,
-            batchnorm=True,
-            data_format="channels_last",
-            activation_middle="relu",
-            activation_end="softmax",
-            kernel_size=3,
-            padding="same",
+            n_filters=self.n_filters,
+            dropout=self.dropout,
+            batchnorm=self.batchnorm,
+            data_format=self.data_format,
+            activation_middle=self.activation_middle,
+            kernel_size=self.kernel_size,
+            padding=self.padding_style,
             num_classes=self.num_classes,
         )
         outputDeep = self.Conv(
             self.num_classes,
-            3,
-            activation="softmax",
-            data_format="channels_last",
-            padding="same",
+            self.kernel_size,
+            activation=self.activation_end,
+            data_format=self.data_format,
+            padding=self.padding_style,
         )(outputDeep)
         if self.padding > 0:
             outputDeep = Cropping2D(
@@ -363,31 +365,31 @@ class UNet3D(UNet):
     def output_layer(self) -> tf.Layer:
 
         outputDeep = self.deep_neural_network(
-            n_filters=16,
-            dropout=0.2,
-            batchnorm=True,
-            data_format="channels_last",
-            activation_middle="relu",
-            activation_end="softmax",
-            kernel_size=3,
-            padding="same",
+            n_filters=self.n_filters,
+            dropout=self.dropout,
+            batchnorm=self.batchnorm,
+            data_format=self.data_format,
+            activation_middle=self.activation_middle,
+            kernel_size=self.kernel_size,
+            padding=self.padding_style,
             num_classes=self.num_classes,
         )
 
+        # The one here serves to collapse the time dimension.
         outputs = Conv3D(
             1,
-            3,
-            activation="relu",
-            data_format="channels_first",
-            padding="same",
+            self.kernel_size,
+            activation=self.activation_middle,
+            data_format=self.opposite_data_format(),
+            padding=self.padding_style,
         )(outputDeep)
 
         outputs2 = self.Conv(
             self.num_classes,
-            3,
-            activation="softmax",
-            data_format="channels_last",
-            padding="same",
+            self.kernel_size,
+            activation=self.activation_end,
+            data_format=self.data_format,
+            padding=self.padding_style,
         )(outputs)
 
         outputDeep = tf.keras.backend.squeeze(outputs2, 1)
