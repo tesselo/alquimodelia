@@ -35,6 +35,8 @@ class ResNet(ModelMagia):
         bnEps: float = 2e-5,
         bnMom: float = 0.9,
         upsample: int = 0,
+        padding_style: str = "same",
+        activation_middle: str = "relu",
         **kwargs,
     ):
         self.stages = stages
@@ -43,6 +45,8 @@ class ResNet(ModelMagia):
         self.reg = reg
         self.bnEps = bnEps
         self.bnMom = bnMom
+        self.padding_style = padding_style
+        self.activation_middle = activation_middle
         self.filters_list = [2]
         for i in range(1, len(self.stages) + 1):
             self.filters_list.append(2 ** (i + 2))
@@ -92,24 +96,24 @@ class ResNet(ModelMagia):
 
         # the first block of the ResNet module are the 1x1 CONVs
         bn1 = BatchNormalization(axis=chanDim, epsilon=bnEps, momentum=bnMom)(data)
-        act1 = Activation("relu")(bn1)
+        act1 = Activation(self.activation_middle)(bn1)
         conv1 = self.Conv(
             int(filter * 0.25), 1, use_bias=False, kernel_regularizer=l2(reg)
         )(act1)
         # the second block of the ResNet module are the 3x3 CONVs
         bn2 = BatchNormalization(axis=chanDim, epsilon=bnEps, momentum=bnMom)(conv1)
-        act2 = Activation("relu")(bn2)
+        act2 = Activation(self.activation_middle)(bn2)
         conv2 = self.Conv(
             int(filter * 0.25),
             3,
             strides=stride,
-            padding="same",
+            padding=self.padding_style,
             use_bias=False,
             kernel_regularizer=l2(reg),
         )(act2)
         # the third block of the ResNet module is another set of 1x1 CONVs
         bn3 = BatchNormalization(axis=chanDim, epsilon=bnEps, momentum=bnMom)(conv2)
-        act3 = Activation("relu")(bn3)
+        act3 = Activation(self.activation_middle)(bn3)
         conv3 = self.Conv(filter, 1, use_bias=False, kernel_regularizer=l2(reg))(act3)
         # if we are to reduce the spatial size, apply a CONV layer to the shortcut
         if red:
@@ -145,11 +149,11 @@ class ResNet(ModelMagia):
             self.filters_list[0],
             5,
             use_bias=False,
-            padding="same",
+            padding=self.padding_style,
             kernel_regularizer=l2(self.reg),
         )(x)
         x = BatchNormalization(axis=chanDim, epsilon=self.bnEps, momentum=self.bnMom)(x)
-        x = Activation("relu")(x)
+        x = Activation(self.activation_middle)(x)
         x = self.ZeroPadding(1)(x)
         x = self.MaxPooling(3, strides=2)(x)
         # loop over the number of stages
@@ -179,14 +183,14 @@ class ResNet(ModelMagia):
                 )
         # apply BN => ACT => POOL
         x = BatchNormalization(axis=chanDim, epsilon=self.bnEps, momentum=self.bnMom)(x)
-        x = Activation("relu")(x)
+        x = Activation(self.activation_middle)(x)
         min_value_inshape = min([f for f in x.shape if f is not None])
         x = self.AveragePooling(min(6, min_value_inshape))(x)
 
         # softmax classifier
         x = Flatten()(x)
         x = Dense(self.num_classes, kernel_regularizer=l2(self.reg))(x)
-        x = Activation("softmax")(x)
+        x = Activation(self.activation_final)(x)
         return x
 
 
