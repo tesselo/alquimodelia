@@ -19,15 +19,6 @@ Package to enable easy usage of Tesselo's common model
     - [ ] Visualize results
     - [ ] Visualize inner layers
 
-## Installation:
-```bash
-pip install git+https://github.com/tesselo/alquimodelia
-```
-or
-```bash
-cd path/to/repo
-pip install .
-```
 
 ## Usage examples:
 
@@ -51,7 +42,7 @@ UNet3D_model = UNet3D(
         kernel_size=3,
         batchnorm=True,
         padding_style="same",
-        activation="relu",
+        activation_middle="relu",
         kernel_initializer="he_normal",
         timesteps=12,
         width=600,
@@ -59,7 +50,6 @@ UNet3D_model = UNet3D(
         padding=None,
         num_bands=10,
         num_classes=4,
-        activation_final=None,
         data_format="channels_last",
 )
 ```
@@ -80,7 +70,6 @@ ResNet3D_model = ResNet3D(
         height=600,
         num_bands=10,
         num_classes=4,
-        activation_final=None,
         data_format="channels_last",
 )
 ```
@@ -106,3 +95,14 @@ RnnLSTM_model = RnnLSTM(
 [[back to usage examples]](#usage-examples)
 
 <br>
+
+## This project is standing on the shoulders of the following giants
+
+Harshall Lamba :
+https://towardsdatascience.com/understanding-semantic-segmentation-with-unet-6be4f42d4b47
+
+Gracelyn Shi:
+https://towardsdatascience.com/implementing-a-resnet-model-from-scratch-971be7193718
+
+Jason Brownlee:
+https://machinelearningmastery.com/keras-functional-api-deep-learning/
